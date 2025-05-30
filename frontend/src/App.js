@@ -1,53 +1,96 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+// Get the backend API base URL from environment variable, fallback to localhost for development
 const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 function App() {
+  // State to store all resources fetched from the backend
   const [resources, setResources] = useState([]);
-  const [form, setForm] = useState({ title: '', url: '', type: '', category: '', status: 'Not Started' });
 
+  // State to store the new resource being created via the form
+  const [newResource, setNewResource] = useState({
+    title: '',
+    link: '',
+    type: ''
+  });
+
+  // useEffect runs once when the component mounts
+  // It fetches all resources from the backend API
   useEffect(() => {
-    axios.get(\`\${baseUrl}/resources\`).then((res) => setResources(res.data));
+    axios.get(`${baseUrl}/resources`)
+      .then((res) => setResources(res.data))
+      .catch((err) => console.error('Error fetching resources:', err));
   }, []);
 
+  // Update form input values in state as user types
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setNewResource({
+      ...newResource,
+      [e.target.name]: e.target.value,
+    });
   };
 
-  const handleSubmit = async (e) => {
+  // Submit the form to add a new resource
+  const handleSubmit = (e) => {
     e.preventDefault();
-    const res = await axios.post(\`\${baseUrl}/resources\`, form);
-    setResources([...resources, res.data]);
-    setForm({ title: '', url: '', type: '', category: '', status: 'Not Started' });
+    axios.post(`${baseUrl}/resources`, newResource)
+      .then((res) => {
+        // Add the newly created resource to the current list
+        setResources([...resources, res.data]);
+        // Clear form after successful submission
+        setNewResource({ title: '', link: '', type: '' });
+      })
+      .catch((err) => console.error('Error adding resource:', err));
   };
 
-  const handleDelete = async (id) => {
-    await axios.delete(\`\${baseUrl}/resources/\${id}\`);
-    setResources(resources.filter(r => r.id !== id));
+  // Delete a resource by ID
+  const handleDelete = (id) => {
+    axios.delete(`${baseUrl}/resources/${id}`)
+      .then(() => {
+        // Filter out the deleted resource from state
+        setResources(resources.filter((r) => r.id !== id));
+      })
+      .catch((err) => console.error('Error deleting resource:', err));
   };
 
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Tech Learning Tracker</h2>
+    <div className="App">
+      <h1>Tech Learning Tracker</h1>
+
+      {/* Form to add new learning resource */}
       <form onSubmit={handleSubmit}>
-        <input name="title" value={form.title} onChange={handleChange} placeholder="Title" required />
-        <input name="url" value={form.url} onChange={handleChange} placeholder="URL" />
-        <input name="type" value={form.type} onChange={handleChange} placeholder="Type (e.g., Article, Course)" />
-        <input name="category" value={form.category} onChange={handleChange} placeholder="Category (e.g., DevOps)" />
-        <select name="status" value={form.status} onChange={handleChange}>
-          <option>Not Started</option>
-          <option>In Progress</option>
-          <option>Completed</option>
-        </select>
+        <input
+          name="title"
+          placeholder="Title"
+          value={newResource.title}
+          onChange={handleChange}
+          required
+        />
+        <input
+          name="link"
+          placeholder="Link"
+          value={newResource.link}
+          onChange={handleChange}
+          required
+        />
+        <input
+          name="type"
+          placeholder="Type (e.g., article, video)"
+          value={newResource.type}
+          onChange={handleChange}
+          required
+        />
         <button type="submit">Add Resource</button>
       </form>
+
+      {/* Display list of learning resources */}
       <ul>
-        {resources.map((r) => (
-          <li key={r.id}>
-            <strong>{r.title}</strong> - {r.status}
-            {r.url && (<a href={r.url} target="_blank" rel="noreferrer"> (link)</a>)}
-            <button onClick={() => handleDelete(r.id)}>Delete</button>
+        {resources.map((res) => (
+          <li key={res.id}>
+            <strong>{res.title}</strong> ({res.type}) -{' '}
+            <a href={res.link} target="_blank" rel="noreferrer">View</a>
+            <button onClick={() => handleDelete(res.id)}>Delete</button>
           </li>
         ))}
       </ul>
